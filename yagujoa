@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>네 명의 인연: 두근두근 캠퍼스 라이프 (라이벌 편)</title>
+<style>
+body {
+background-color: #f0f2f5;
+font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+margin: 0;
+}
+
+/* 레이아웃을 좌우 분할로 변경 (flex-direction: row) */
+#game-container {
+width: 1100px;
+height: 700px;
+background-color: white;
+border-radius: 15px;
+box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+overflow: hidden;
+position: relative;
+display: flex;
+flex-direction: row; /* 좌우 배치 */
+}
+
+/* 왼쪽: 이미지 영역 */
+#image-container {
+width: 55%;
+height: 100%;
+background-color: #111;
+display: flex;
+justify-content: center;
+align-items: center;
+overflow: hidden;
+position: relative;
+}
+
+/* 이미지가 잘리지 않도록 contain 적용 */
+#character-img {
+width: 100%;
+height: 100%;
+object-fit: contain;
+transition: opacity 0.3s ease-in-out;
+}
+
+/* 오른쪽: 대화 및 선택지 UI 영역 */
+#ui-container {
+width: 45%;
+padding: 25px;
+display: flex;
+flex-direction: column;
+background-color: #fff;
+border-left: 5px solid #4a90e2; /* 위에서 왼쪽으로 테두리 이동 */
+box-sizing: border-box;
+overflow-y: auto;
+}
+
+#name-box {
+background-color: #4a90e2;
+color: white;
+display: inline-block;
+padding: 8px 20px;
+border-radius: 20px;
+font-weight: bold;
+font-size: 18px;
+margin-bottom: 12px;
+align-self: flex-start;
+box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+#dialogue-box {
+background-color: #f8f9fa;
+border-radius: 12px;
+padding: 18px;
+font-size: 17px;
+line-height: 1.6;
+color: #333;
+min-height: 120px;
+margin-bottom: 20px;
+border: 1px solid #e9ecef;
+overflow-y: auto;
+}
+
+#choices-box {
+display: flex;
+flex-direction: column;
+gap: 12px;
+overflow-y: auto;
+}
+
+.choice-btn {
+background-color: #6c757d;
+color: white;
+border: none;
+padding: 14px;
+border-radius: 10px;
+font-size: 16px;
+cursor: pointer;
+transition: all 0.2s;
+text-align: left;
+padding-left: 20px;
+}
+
+.choice-btn:hover {
+background-color: #4a90e2;
+transform: translateX(5px);
+}
+
+/* 호감도 상태창 위치 조정 */
+#status-box {
+position: absolute;
+top: 15px;
+left: 15px; /* 이미지 영역 좌측 상단으로 이동 */
+background-color: rgba(255, 255, 255, 0.95);
+padding: 12px 15px;
+border-radius: 12px;
+font-weight: bold;
+font-size: 14px;
+color: #333;
+box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+text-align: left;
+line-height: 1.6;
+z-index: 10;
+}
+
+.heart { color: #e24a68; }
+.fist { color: #5c6bc0; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+<div id="status-box">
+스텔라: <span id="aff-stella">0</span> <span class="heart">♥</span><br>
+이 안: <span id="aff-ian">0</span> <span class="heart">♥</span><br>
+지 우: <span id="aff-jiu">0</span> <span class="heart">♥</span><br>
+라이벌(민욱): <span id="aff-minwook">0</span> <span class="fist">⚡</span>
+</div>
+
+<div id="image-container">
+<img id="character-img" src="" alt="캐릭터">
+</div>
+
+<div id="ui-container">
+<div id="name-box">이름</div>
+<div id="dialogue-box">로딩 중...</div>
+<div id="choices-box"></div>
+</div>
+</div>
+
+<script>
+// 이미지 URL 매핑 (지우 이미지 추가 및 민욱, 스텔라, 이안 유지)
+const images = {
+stella_phone: 'https://i.postimg.cc/1R0bbjhf/seutella1.jpg',
+stella_stand: 'https://i.postimg.cc/hG75sC1L/seutella2.jpg',
+stella_cranky: 'https://i.postimg.cc/Ss6tFJ5K/seutella3.jpg',
+stella_shy: 'https://i.postimg.cc/J0K60SRV/seutella4.jpg',
+stella_read: 'https://i.postimg.cc/pV1KV2Hz/seutella5.jpg',
+stella_ian: 'https://i.postimg.cc/Dw1GcLbh/seutella6.jpg',
+stella_selfie: 'https://i.postimg.cc/6QwvbqdC/seutella7.jpg',
+ian_seduce: 'https://i.postimg.cc/vHFfx0cj/ian1.jpg',
+ian_stand: 'https://i.postimg.cc/13yFJ40p/ian2.jpg',
+jiu_stand: 'https://i.postimg.cc/zDjp5md9/jiu1.jpg',
+jiu_discover: 'https://i.postimg.cc/sx6pWr8b/jiu2.jpg',
+jiu_umbrella: 'https://i.postimg.cc/BZM5kT6Y/jiu3.jpg',
+jiu_angry: 'https://i.postimg.cc/MG7VDRNy/jiu4.jpg',
+minwook_normal: 'https://i.postimg.cc/jSCxxbtF/WIN-20261012-09-04-19-Pro.jpg',
+black: 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=' // 빈 화면
+};
+
+// 호감도 및 라이벌 수치 상태
+let aff = { stella: 0, ian: 0, jiu: 0, minwook: 0 }; // minwook 수치가 높으면 민욱이가 주도권을 쥠
+
+function updateAff() {
+document.getElementById('aff-stella').textContent = aff.stella;
+document.getElementById('aff-ian').textContent = aff.ian;
+document.getElementById('aff-jiu').textContent = aff.jiu;
+document.getElementById('aff-minwook').textContent = aff.minwook;
+}
+
+// 스토리 데이터베이스
+const story = {
+// [프롤로그] 라이벌의 선전포고
+start: {
+name: "김민욱",
+image: "minwook_normal",
+text: "야! 이번 학기엔 기필코 솔로 탈출이다. 미리 말해두는데, 만약 우리가 같은 여자를 좋아하게 되면 절대 양보 안 한다? 친구고 뭐고 계급장 떼고 붙는 거야, 알겠지?",
+choices: [
+{ text: "웃기지 마. 내가 다 꼬실 거다.", next: "campus_morning" },
+{ text: "그래, 정정당당하게 승부하자.", next: "campus_morning", effect: () => { aff.minwook++; updateAff(); } }
+]
+},
+
+// [첫 번째 만남: 지우]
+campus_morning: {
+name: "이하결",
+image: "jiu_discover",
+text: "(민욱이와 교정을 걷던 중, 세련된 차림의 한 여학생이 우리 쪽을 돌아본다. 도도한 분위기를 풍기는 선배, 지우다.)",
+choices: [
+{ text: "가볍게 눈인사만 한다.", next: "jiu_minwook_action" },
+{ text: "'안녕하세요, 선배님!' 하고 먼저 인사한다.", next: "jiu_minwook_action", effect: () => { aff.jiu++; updateAff(); } }
+]
+},
+jiu_minwook_action: {
+name: "김민욱",
+image: "minwook_normal",
+text: "(민욱이가 재빠르게 내 앞으로 치고 나간다.) \n\"아앗! 지우 선배님! 오늘 스타일 완전 미치셨는데요? 혹시 점심 약속 있으십니까? 저랑 밥 한 끼 하시죠!\"",
+choices: [
+{ text: "민욱이의 뒷덜미를 잡고 사과한다. \"죄송합니다, 얘가 미쳐서요.\"", next: "jiu_impressed", effect: () => { aff.jiu += 2; updateAff(); } },
+{ text: "(가만히 지켜본다)", next: "jiu_angry_scene", effect: () => { aff.minwook++; updateAff(); } }
+]
+},
+jiu_impressed: {
+name: "지우",
+image: "jiu_stand",
+text: "(지우가 내 쪽을 보며 살짝 미소를 짓는다.) \n\"후훗... 네 친구 참 활기차네. 너처럼 얌전한 애랑 어떻게 붙어 다니는지 신기하다. 밥은 나중에 기회 되면 먹자.\"",
+choices: [
+{ text: "네, 나중에 봬요 선배.", next: "class_start" }
+]
+},
+jiu_angry_scene: {
+name: "지우",
+image: "jiu_angry",
+text: "(지우의 미간이 찌푸려진다.) \n\"너희들 세트로 참 소란스럽네. 번지수 잘못 찾았어. 비켜, 수업 늦겠다.\"",
+choices: [
+{ text: "(민욱이 때문에 첫인상이 깎인 채 강의실로 향한다)", next: "class_start" }
+]
+},
+
+// [두 번째 만남: 이안 & 스텔라]
+class_start: {
+name: "이하결",
+image: "black",
+text: "(강의실. 이안과 스텔라가 보인다. 민욱이가 이미 쏜살같이 뛰어가 이안의 옆자리를 차지하고 수작을 부리고 있다!)",
+choices: [
+{ text: "민욱이를 밀어내고 이안 옆에 앉는다.", next: "ian_meet", effect: () => { aff.ian++; updateAff(); } },
+{ text: "조용히 스텔라 옆자리에 앉는다.", next: "stella_meet" }
+]
+},
+ian_meet: {
+name: "이안",
+image: "ian_seduce",
+text: "(이안이 나를 보며 웃는다) \n\"어? 너도 이 수업이었네? 네 친구 진짜 웃겨. 근데 난 너랑 앉는 게 더 좋은데. 민욱아, 너 저기 가서 앉아줄래?\"",
+choices: [
+{ text: "민욱이를 쫓아내고 이안과 대화한다.", next: "lunch_time", effect: () => { aff.ian += 2; updateAff(); } }
+]
+},
+stella_meet: {
+name: "스텔라",
+image: "stella_phone",
+text: "(내가 옆에 앉든 말든 스텔라는 핸드폰만 보고 있다. 저 멀리서 이안에게 찝쩍대는 민욱이의 목소리만 들린다.)",
+choices: [
+{ text: "노트를 꺼내며 스텔라에게 가볍게 눈인사한다.", next: "stella_react", effect: () => { aff.stella++; updateAff(); } },
+{ text: "나도 조용히 수업 준비만 한다.", next: "lunch_time" }
+]
+},
+stella_react: {
+name: "스텔라",
+image: "stella_stand",
+text: "...어, 안녕. 저기 시끄러운 애 네 친구지? 너도 쟤랑 똑같은 성격은 아니길 바라.",
+choices: [
+{ text: "난 쟤랑 달라. 안심해.", next: "lunch_time", effect: () => { aff.stella++; updateAff(); } }
+]
+},
+
+// [점심시간 - 민욱이의 도발]
+lunch_time: {
+name: "김민욱",
+image: "minwook_normal",
+text: "야, 오늘 진짜 물 좋다! 내가 이안한테 주말에 같이 과제하자고 꼬셔놨지. 너는 뭐 했냐? 이러다 이번에도 넌 솔로 엔딩이다 ㅋㅋㅋ",
+choices: [
+{ text: "두고 봐. 나도 계획이 있으니까.", next: "afternoon_choice" },
+{ text: "그래, 넌 이안이랑 잘해봐라. 난 다른 쪽을 노릴게.", next: "afternoon_choice", effect: () => { aff.minwook++; updateAff(); } }
+]
+},
+
+// [오후의 비 오는 날]
+afternoon_choice: {
+name: "이하결",
+image: "black",
+text: "(오후 공강 시간. 갑자기 밖에서 소나기가 내리기 시작한다. 우산이 없는데 어떡하지?)",
+choices: [
+{ text: "도서관에 있는 스텔라에게 간다.", next: "library_stella" },
+{ text: "과방에 있는 이안에게 간다.", next: "club_ian" },
+{ text: "건물 입구에 비를 피하러 간다 (지우).", next: "entrance_jiu" }
+]
+},
+library_stella: {
+name: "스텔라",
+image: "stella_read",
+text: "(도서관. 스텔라가 창밖의 비를 보며 책을 읽고 있다.) \n\"비 오네... 너 우산은 있어? 없으면... 이따 내 거 같이 쓰고 가든가. 오, 오해는 마. 너 비 맞으면 감기 걸려서 기침 소리 거슬릴까 봐 그러는 거니까.\"",
+choices: [
+{ text: "고마워. 이따 같이 가자.", next: "weekend_prep", effect: () => { aff.stella += 2; updateAff(); } }
+]
+},
+club_ian: {
+name: "이안",
+image: "ian_stand",
+text: "(과방에 가보니 이안과 민욱이가 있다!) \n이안: \"어? 너도 우산 안 가져왔어? 마침 민욱이가 우산 큰 거 있다고 나 씌워준다고 했는데! 셋이 쓰긴 좁은데 어떡하지?\"",
+choices: [
+{ text: "내가 우산 하나 사 올 테니까 나랑 같이 가자고 한다.", next: "ian_win", effect: () => { aff.ian += 2; updateAff(); } },
+{ text: "그냥 민욱이랑 둘이 쓰라고 양보한다.", next: "weekend_prep", effect: () => { aff.minwook += 2; updateAff(); } }
+]
+},
+ian_win: {
+name: "이안",
+image: "ian_seduce",
+text: "진짜? 나야 완전 고맙지! 민욱아 미안~ 난 얘랑 같이 갈게! \n(민욱이가 분하다는 듯이 나를 째려본다.)",
+choices: [
+{ text: "승리의 미소를 지으며 이안과 나선다.", next: "weekend_prep" }
+]
+},
+entrance_jiu: {
+name: "이하결",
+image: "black",
+text: "(건물 입구에서 비가 그치길 기다리고 있는데, 누군가 옆에서 우산을 펴며 다가온다.)",
+choices: [
+{ text: "옆을 돌아본다.", next: "jiu_rain" }
+]
+},
+jiu_rain: {
+name: "지우",
+image: "jiu_umbrella",
+text: "(지우 선배가 우산을 쓰고 매혹적인 미소를 짓고 있다.) \n\"바보같이 비 맞으려고? 누나가 씌워줄 테니까 들어와. 오늘은 웬일로 혼자네? 그 시끄러운 친구는 어쩌고?\"",
+choices: [
+{ text: "선배랑 단둘이 있고 싶어서 떼어놓고 왔죠.", next: "weekend_prep", effect: () => { aff.jiu += 2; updateAff(); } },
+{ text: "아... 감사합니다 선배님.", next: "weekend_prep", effect: () => { aff.jiu++; updateAff(); } }
+]
+},
+
+// [최종 결전]
+weekend_prep: {
+name: "이하결",
+image: "minwook_normal",
+text: "(주말 전날 밤. 민욱이에게서 카톡이 왔다.) \n[김민욱: 야! 나 내일 드디어 고백할 거다. 너도 눈독 들이고 있는 거 아는데, 이번엔 내가 이긴다! 나도 진심이라고.] \n...나도 질 수 없지. 누구에게 연락할까?",
+choices: [
+{ text: "스텔라에게 연락한다.", next: "end_stella_check" },
+{ text: "이안에게 연락한다.", next: "end_ian_check" },
+{ text: "지우 선배에게 연락한다.", next: "end_jiu_check" }
+]
+},
+
+// [엔딩 - 스텔라]
+end_stella_check: {
+name: "시스템",
+image: "black",
+text: "스텔라 호감도 확인 및 라이벌(민욱) 수치 비교 중...",
+choices: [ { text: "결과 확인", next: "end_stella_result" } ]
+},
+end_stella_result: {
+name: "스텔라",
+image: "stella_selfie",
+text: "",
+choices: [],
+onEnter: () => {
+const node = story.end_stella_result;
+if (aff.minwook > aff.stella && aff.minwook >= 3) {
+story.end_stella_result.image = "stella_cranky";
+node.text = "[NTR 배드 엔딩] \n\"나 오늘 네 친구 민욱이랑 약속 있어서 못 나가. 걔가 귀찮게 계속 연락하길래 한 번 만나주기로 했어. 넌 집에서 쉬어.\"\n(나는 민욱이의 추진력에 패배하고 말았다...)";
+} else if (aff.stella >= 3) {
+story.end_stella_result.image = "stella_selfie";
+node.text = "[해피 엔딩] \n\"...내일? 뭐, 딱히 할 일은 없었어. 네가 정 그렇게 원한다면 같이 밥 정도는 먹어줄게. 예쁘게 입고 나갈 테니까 늦지 마.\"\n(얼음공주 스텔라가 민욱이의 수작을 다 차단하고 나를 선택했다!)";
+} else {
+story.end_stella_result.image = "stella_stand";
+node.text = "[노멀 엔딩] \n\"미안, 주말엔 집에서 책 읽을 거야. 둘 다 연락 좀 그만해 줄래?\"\n(나도, 민욱이도 모두 까였다...)";
+}
+renderChoices(node.choices);
+}
+},
+
+// [엔딩 - 이안]
+end_ian_check: {
+name: "시스템",
+image: "black",
+text: "이안 호감도 확인 및 라이벌(민욱) 수치 비교 중...",
+choices: [ { text: "결과 확인", next: "end_ian_result" } ]
+},
+end_ian_result: {
+name: "이안",
+image: "ian_seduce",
+text: "",
+choices: [],
+onEnter: () => {
+const node = story.end_ian_result;
+if (aff.minwook > aff.ian && aff.minwook >= 3) {
+story.end_ian_result.image = "ian_stand";
+node.text = "[NTR 배드 엔딩] \n\"아! 미안해! 나 이미 민욱이랑 주말에 영화 보기로 선약 잡았어! 다음에 우리 셋이 같이 놀자!\"\n(이안은 적극적인 민욱이에게 넘어가 버렸다...)";
+} else if (aff.ian >= 3) {
+story.end_ian_result.image = "ian_seduce";
+node.text = "[해피 엔딩] \n\"당연하지! 민욱이가 자꾸 연락 오긴 했는데, 난 너랑 노는 게 백배 더 재밌어! 내일 하루 종일 나만 봐야 해?\"\n(이안은 도발적인 미소로 나를 맞이했다. 라이벌에게 완승이다!)";
+} else {
+story.end_ian_result.image = "ian_stand";
+node.text = "[노멀 엔딩] \n\"내일? 아~ 나 내일 다른 친구들이랑 주점 알바 뛰기로 했어. 놀러 와!\"\n(결국 그 누구도 그녀의 마음을 잡지 못했다...)";
+}
+renderChoices(node.choices);
+}
+},
+
+// [엔딩 - 지우]
+end_jiu_check: {
+name: "시스템",
+image: "black",
+text: "지우 호감도 확인 및 라이벌(민욱) 수치 비교 중...",
+choices: [ { text: "결과 확인", next: "end_jiu_result" } ]
+},
+end_jiu_result: {
+name: "지우",
+image: "jiu_umbrella",
+text: "",
+choices: [],
+onEnter: () => {
+const node = story.end_jiu_result;
+if (aff.minwook > aff.jiu && aff.minwook >= 3) {
+story.end_jiu_result.image = "jiu_stand";
+node.text = "[NTR 배드 엔딩] \n\"어쩌지? 네 친구가 자꾸 밥 사달라고 조르는 바람에 내일 만나기로 했거든. 넌 다음 기회에.\"\n(지우 선배마저 민욱이의 능글맞음에 넘어가 버렸다...)";
+} else if (aff.jiu >= 3) {
+story.end_jiu_result.image = "jiu_umbrella";
+node.text = "[해피 엔딩] \n\"그래, 얌전한 후배님. 네 시끄러운 친구 말고, 너랑 단둘이 분위기 좋은 데서 와인이나 한잔할까? 누나가 리드할게.\"\n(어른스럽고 도도한 지우 선배와의 아찔한 데이트가 시작된다!)";
+} else {
+story.end_jiu_result.image = "jiu_angry";
+node.text = "[노멀 엔딩] \n\"너희 둘 다 귀찮게 왜 이래? 나 주말에 바쁘니까 당분간 연락하지 마.\"\n(나와 민욱이의 유치한 신경전에 선배가 화가 나버렸다...)";
+}
+renderChoices(node.choices);
+}
+}
+};
+
+// 게임 렌더링 함수
+function renderNode(nodeId) {
+const node = story[nodeId];
+
+// 이미지 업데이트 (페이드 효과)
+const imgElement = document.getElementById('character-img');
+imgElement.style.opacity = 0;
+
+setTimeout(() => {
+imgElement.src = images[node.image];
+imgElement.style.opacity = 1;
+}, 200);
+
+// 이름과 대사 업데이트
+const nameBox = document.getElementById('name-box');
+nameBox.textContent = node.name;
+
+// 캐릭터에 따라 이름표 색상 변경
+if(node.name === "스텔라") nameBox.style.backgroundColor = "#ff80ab";
+else if(node.name === "이안") nameBox.style.backgroundColor = "#ff9800";
+else if(node.name === "지우") nameBox.style.backgroundColor = "#9c27b0";
+else if(node.name === "김민욱") nameBox.style.backgroundColor = "#607d8b";
+else nameBox.style.backgroundColor = "#4a90e2";
+
+document.getElementById('dialogue-box').innerHTML = node.text.replace(/\n/g, '<br>');
+
+// 엔딩 분기 로직 처리
+if (node.onEnter) {
+node.onEnter();
+} else {
+renderChoices(node.choices);
+}
+}
+
+// 선택지 렌더링 함수
+function renderChoices(choices) {
+const choicesBox = document.getElementById('choices-box');
+choicesBox.innerHTML = '';
+
+// 엔딩 도달 시 다시하기 버튼
+if (!choices || choices.length === 0) {
+const restartBtn = document.createElement('button');
+restartBtn.className = 'choice-btn';
+restartBtn.style.backgroundColor = "#e24a68";
+restartBtn.textContent = "처음부터 다시 하기";
+restartBtn.onclick = () => {
+aff = { stella: 0, ian: 0, jiu: 0, minwook: 0 };
+updateAff();
+renderNode('start');
+};
+choicesBox.appendChild(restartBtn);
+return;
+}
+
+choices.forEach(choice => {
+const btn = document.createElement('button');
+btn.className = 'choice-btn';
+btn.textContent = choice.text;
+btn.onclick = () => {
+if (choice.effect) choice.effect();
+renderNode(choice.next);
+};
+choicesBox.appendChild(btn);
+});
+}
+
+// 게임 시작
+window.onload = () => {
+updateAff();
+renderNode('start');
+};
+</script>
+</body>
+</html>
